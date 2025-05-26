@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        
+        <!-- Données de démonstration pour Mon Modèle -->
+        <record id="mon_modele_demo_1" model="mon.modele">
+            <field name="name">Tâche de démonstration 1</field>
+            <field name="description">Cette tâche montre comment utiliser le module</field>
+            <field name="state">draft</field>
+            <field name="priority">1</field>
+        </record>
+
+        <record id="mon_modele_demo_2" model="mon.modele">
+            <field name="name">Projet urgent</field>
+            <field name="description">Un projet avec une priorité urgente pour la démonstration</field>
+            <field name="state">confirmed</field>
+            <field name="priority">3</field>
+        </record>
+
+        <record id="mon_modele_demo_3" model="mon.modele">
+            <field name="name">Tâche terminée</field>
+            <field name="description">Exemple d'une tâche déjà terminée</field>
+            <field name="state">done</field>
+            <field name="priority">1</field>
+        </record>
+
+        <record id="mon_modele_demo_4" model="mon.modele">
+            <field name="name">Tâche annulée</field>
+            <field name="description">Exemple d'une tâche qui a été annulée</field>
+            <field name="state">cancelled</field>
+            <field name="priority">0</field>
+        </record>
+
+    </data>
+</odoo> 
