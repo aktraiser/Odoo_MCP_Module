@@ -22,8 +22,8 @@ Un module Odoo 18.0 simple démontrant les meilleures pratiques de développemen
 
 1. **Cloner le repository**
 ```bash
-git clone <votre-repo-url>
-cd Odoo_workflow
+git clone https://github.com/aktraiser/odoo-workflow-module.git
+cd odoo-workflow-module
 ```
 
 2. **Démarrer les conteneurs**
@@ -146,7 +146,7 @@ Ce projet est sous licence LGPL-3. Voir le fichier `LICENSE` pour plus de détai
 
 ## 👨‍💻 Auteur
 
-Votre Nom - [votre-email@example.com]
+aktraiser - [GitHub](https://github.com/aktraiser)
 
 ## 🙏 Remerciements
 
