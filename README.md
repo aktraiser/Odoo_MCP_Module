@@ -2,7 +2,7 @@
 
 Un module Odoo 18.0 avancé intégrant l'intelligence artificielle Claude d'Anthropic via le protocole MCP (Model Context Protocol) avec Gradio.
 
-## 🤖 Fonctionnalités
+## Fonctionnalités
 
 - ✅ **Chatbot IA intégré** avec Claude 3.5 Sonnet d'Anthropic
 - ✅ **Protocole MCP** pour l'accès aux données Odoo en temps réel
@@ -13,7 +13,7 @@ Un module Odoo 18.0 avancé intégrant l'intelligence artificielle Claude d'Anth
 - ✅ **Architecture modulaire** respectant les bonnes pratiques Odoo
 - ✅ **Compatible Docker** pour déploiement facile
 
-## 🏗️ Architecture
+## Architecture
 
 ### Composants Principaux
 
@@ -31,7 +31,7 @@ Un module Odoo 18.0 avancé intégrant l'intelligence artificielle Claude d'Anth
 - **Claude 3 Sonnet** - Version antérieure
 - **Claude 3 Haiku** - Version antérieure
 
-## 📋 Prérequis
+## Prérequis
 
 ### Technique
 - Docker & Docker Compose
@@ -43,7 +43,7 @@ Un module Odoo 18.0 avancé intégrant l'intelligence artificielle Claude d'Anth
 - **Clé API Anthropic** : [console.anthropic.com](https://console.anthropic.com/)
 - **Serveur MCP Gradio** : Serveur externe pour accès aux données
 
-## 🛠️ Installation
+## Installation
 
 ### 1. Cloner le Repository
 ```bash
@@ -65,7 +65,28 @@ docker-compose ps
 - **Utilisateur** : `admin`
 - **Mot de passe** : `admin`
 
-### 4. Installation du Module
+### 4. Exposition du Serveur Local (Optionnel)
+
+Pour rendre votre instance Odoo accessible depuis l'extérieur (utile pour les tests avec des services externes ou le partage), utilisez **cloudflared tunnel** :
+
+```bash
+# Installer cloudflared (si pas déjà fait)
+# macOS
+brew install cloudflared
+
+# Linux
+curl -L --output cloudflared.deb https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
+sudo dpkg -i cloudflared.deb
+
+# Créer un tunnel vers votre instance locale
+cloudflared tunnel --url http://localhost:8069
+```
+
+Le tunnel génèrera une URL publique temporaire (ex: `https://xxxx-xx-xx-xx-xx.trycloudflare.com`) que vous pourrez utiliser pour accéder à votre instance Odoo depuis n'importe où.
+
+**⚠️ Important :** Cette URL est temporaire et change à chaque redémarrage du tunnel. Utilisez cette méthode uniquement pour les tests et développement.
+
+### 5. Installation du Module
 1. Aller dans **Apps**
 2. Rechercher "Chatbot MCP"
 3. Cliquer **Install**
@@ -93,7 +114,7 @@ Actif : ✓
 
 Votre serveur MCP doit exposer une API compatible à l'URL configurée.
 
-## 🚀 Utilisation
+## Utilisation
 
 ### Interface Principale
 
@@ -105,11 +126,11 @@ Votre serveur MCP doit exposer une API compatible à l'URL configurée.
 ### Exemples de Questions
 
 ```
-📊 "Montre-moi les statistiques CRM de ce mois"
-🔍 "Analyse les leads avec le plus fort potentiel"
-🛒 "Quelles sont les dernières commandes importantes ?"
-📈 "Surveille les performances de vente cette semaine"
-👥 "Liste les clients les plus actifs"
+"Montre-moi les statistiques CRM de ce mois"
+"Analyse les leads avec le plus fort potentiel"
+"Quelles sont les dernières commandes importantes ?"
+"Surveille les performances de vente cette semaine"
+"Liste les clients les plus actifs"
 ```
 
 ### API REST
@@ -199,7 +220,7 @@ docker-compose logs -f odoo
 docker-compose down -v && docker-compose up -d
 ```
 
-## 🧪 Tests & Validation
+## Tests & Validation
 
 ### Tests Automatisés
 
@@ -220,7 +241,7 @@ config.test_anthropic_direct()
 - ✅ Configuration unique active
 - ✅ Gestion d'erreurs robuste
 
-## 🐛 Dépannage
+## Dépannage
 
 ### Problèmes Courants
 
@@ -265,7 +286,7 @@ docker-compose logs odoo | grep -i "error\|traceback"
 - ✅ **Validation** des entrées utilisateur
 - ✅ **Gestion d'erreurs** sans exposition de données sensibles
 
-## 🤝 Contribution
+## Contribution
 
 1. **Fork** le projet
 2. **Créer** une branche feature (`git checkout -b feature/AmazingFeature`)
