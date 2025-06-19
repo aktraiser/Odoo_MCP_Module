@@ -1,3 +1,0 @@
-id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
-access_mon_modele_user,mon.modele.user,model_mon_modele,base.group_user,1,1,1,1
-access_mon_modele_manager,mon.modele.manager,model_mon_modele,base.group_system,1,1,1,1

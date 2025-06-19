@@ -1,0 +1,6 @@
+# Dépendances pour le module Odoo Chatbot MCP
+requests>=2.25.1
+gradio_client>=0.8.0
+
+# Optionnel: pour l'interface Anthropic directe
+anthropic>=0.3.0 
