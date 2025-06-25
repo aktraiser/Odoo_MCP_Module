@@ -24,8 +24,8 @@ class ChatbotConfig(models.Model):
     is_active = fields.Boolean(string="Actif", default=True)
     mcp_url = fields.Char(
         string="URL MCP Gradio", 
-        default="http://localhost:8080",
-        help="URL du serveur MCP Gradio. Exemple: http://localhost:8080 ou https://votre-serveur.com"
+        default="https://aktraiser-mcp-server-odoo.hf.space",
+        help="URL du serveur MCP Gradio. Configuré par défaut vers votre serveur Hugging Face Spaces. Exemple: http://localhost:8080 pour un serveur local"
     )
     
     # Champs informatifs
@@ -116,14 +116,14 @@ class ChatbotConfig(models.Model):
             anthropic_service = self.env['anthropic.service']
             test_message = "Bonjour, ceci est un test de l'API Anthropic. Réponds simplement 'Test réussi' en français."
             
-            # Forcer l'appel direct (sans MCP)
-            temp_mcp_url = self.mcp_url
-            self.mcp_url = False  # Désactiver temporairement MCP
+            # Créer une configuration temporaire sans MCP pour forcer l'appel direct
+            temp_config = {
+                'anthropic_api_key': self.anthropic_api_key,
+                'anthropic_model': self.anthropic_model,
+                'mcp_url': None  # Pas d'URL MCP pour forcer l'appel direct
+            }
             
-            response = anthropic_service.call_anthropic_direct(test_message, self)
-            
-            # Restaurer l'URL MCP
-            self.mcp_url = temp_mcp_url
+            response = anthropic_service.call_anthropic_api(test_message, temp_config)
             
             if response and not response.startswith("KO"):
                 return {

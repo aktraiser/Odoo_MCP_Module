@@ -15,13 +15,13 @@ services:
     ports:
       - "8069:8069"
     volumes:
-      - ./mon_module_simple:/mnt/extra-addons/mon_module_simple
+      - ./MCP_Odoo:/mnt/extra-addons/MCP_Odoo
       - ./requirements.txt:/tmp/requirements.txt
       - ./odoo.conf:/etc/odoo/odoo.conf
     command: >
       bash -c "
         pip install --break-system-packages -r /tmp/requirements.txt &&
-        odoo
+        odoo -d odoo --db-filter=odoo
       "
     depends_on:
       - db

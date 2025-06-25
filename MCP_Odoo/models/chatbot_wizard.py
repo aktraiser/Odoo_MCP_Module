@@ -1,6 +1,7 @@
 from odoo import models, fields, api
 import requests
 import json
+import time
 
 class ChatbotWizard(models.TransientModel):
     _name = 'chatbot.wizard'
@@ -8,12 +9,31 @@ class ChatbotWizard(models.TransientModel):
 
     user_input = fields.Text(string='Votre message', required=True, placeholder="Posez votre question au chatbot...")
     bot_response = fields.Html(string='Réponse du chatbot', readonly=True)
+    previous_user_message = fields.Text(string='Message utilisateur précédent', readonly=True)
     config_id = fields.Many2one('chatbot.config', string='Configuration', readonly=True)
     
     # Champs de configuration quick
     show_config = fields.Boolean(string='Afficher configuration', default=False)
+    show_history = fields.Boolean(string='Afficher historique', default=False)
     anthropic_api_key = fields.Char(string='Clé API Anthropic', password=True)
     mcp_url = fields.Char(string='URL MCP Gradio')
+    
+    # Nouveaux champs pour l'historique
+    conversation_history = fields.One2many(
+        'chatbot_custom.message', 
+        compute='_compute_conversation_history',
+        string='Historique des conversations'
+    )
+    current_session_id = fields.Char(string='Session ID courante')
+    
+    @api.depends('current_session_id')
+    def _compute_conversation_history(self):
+        """Calculer l'historique des conversations pour l'utilisateur actuel"""
+        for wizard in self:
+            history = self.env['chatbot_custom.message'].search([
+                ('user_id', '=', self.env.user.id)
+            ], limit=15, order='timestamp desc')
+            wizard.conversation_history = history
     
     @api.model
     def default_get(self, fields_list):
@@ -24,60 +44,100 @@ class ChatbotWizard(models.TransientModel):
             defaults['config_id'] = config.id
             defaults['anthropic_api_key'] = config.anthropic_api_key
             defaults['mcp_url'] = config.mcp_url
+        
+        # Générer un ID de session pour cette instance
+        defaults['current_session_id'] = self._generate_session_id()
         return defaults
+    
+    @api.model
+    def _generate_session_id(self):
+        """Générer un ID de session unique"""
+        import uuid
+        return str(uuid.uuid4())[:12]
     
     def action_send_message(self):
         """Envoyer le message au chatbot et afficher la réponse"""
         if not self.user_input:
             return
         
+        start_time = time.time()
+        
+        # Sauvegarder le message utilisateur pour l'affichage dans la conversation
+        self.previous_user_message = self.user_input
+        
         # Récupérer ou créer la configuration
         config = self._get_or_create_config()
         
         if not config:
-            self.bot_response = "KO : Configuration manquante"
+            self.bot_response = "❌ Configuration manquante"
+            # Vider le champ user_input après traitement
+            self.user_input = ""
             return self._return_wizard()
-        
-        # Créer l'enregistrement du message
+
+        # Créer l'enregistrement du message avec le bon session_id
         message = self.env['chatbot_custom.message'].create({
-            'user_input': self.user_input,
-            'timestamp': fields.Datetime.now()
+            'user_input': self.previous_user_message,  # Utiliser le message sauvegardé
+            'timestamp': fields.Datetime.now(),
+            'session_id': self.current_session_id,
+            'status': 'sent',
+            'config_used': config.id
         })
         
         try:
-            # Utiliser le service Anthropic commun
+            # Utiliser le service Anthropic
             anthropic_service = self.env['anthropic.service']
+            bot_response = anthropic_service.call_anthropic_api(self.previous_user_message, config)  # Utiliser le message sauvegardé
             
-            # Appel initial avec MCP
-            raw_response = anthropic_service.call_anthropic_api(self.user_input, config)
+            # Calculer le temps de réponse
+            response_time = time.time() - start_time
             
-            # Post-traitement intelligent pour améliorer la présentation
-            if (config.mcp_url and 
-                ("**Résultats :**" in raw_response or 
-                 "[{'role': 'assistant'" in raw_response or 
-                 len(raw_response) > 300)):
-                
-                formatted_response = anthropic_service.post_process_with_llm(
-                    raw_response, self.user_input, config
-                )
-                bot_response = formatted_response if formatted_response else raw_response
-            else:
-                bot_response = raw_response
+            # Mettre à jour avec la vraie réponse
+            message.write({
+                'bot_response': bot_response,
+                'status': 'processed',
+                'response_time': response_time
+            })
             
-            # Mettre à jour le message et le wizard
-            message.write({'bot_response': bot_response})
-            self.bot_response = self._format_response(bot_response)
+            self.bot_response = self._format_response(bot_response, response_time)
             
         except Exception as e:
-            error_msg = f"KO : Erreur: {str(e)}"
-            message.write({'bot_response': error_msg})
-            self.bot_response = error_msg
+            error_msg = f"❌ Erreur: {str(e)}"
+            message.write({
+                'bot_response': error_msg,
+                'status': 'error',
+                'error_message': str(e),
+                'response_time': time.time() - start_time
+            })
+            self.bot_response = self._format_error_message(str(e))
+        
+        # Vider le champ user_input après traitement du message
+        self.user_input = ""
         
         return self._return_wizard()
+    
+    def _format_error_message(self, error):
+        """Formater un message d'erreur"""
+        return f"""
+        <div style="background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; padding: 15px; border-radius: 8px;">
+            <h5>❌ Erreur de traitement</h5>
+            <p><strong>Détails :</strong> {error}</p>
+            <p><strong>Solutions possibles :</strong></p>
+            <ul>
+                <li>Vérifiez votre configuration MCP</li>
+                <li>Assurez-vous que le serveur Gradio est accessible</li>
+                <li>Vérifiez votre clé API Anthropic</li>
+            </ul>
+        </div>
+        """
     
     def action_toggle_config(self):
         """Basculer l'affichage de la configuration"""
         self.show_config = not self.show_config
+        return self._return_wizard()
+    
+    def action_toggle_history(self):
+        """Basculer l'affichage de l'historique"""
+        self.show_history = not self.show_history
         return self._return_wizard()
     
     def action_save_config(self):
@@ -103,6 +163,30 @@ class ChatbotWizard(models.TransientModel):
         self.show_config = False
         return self._return_wizard()
     
+    def action_load_history_message(self):
+        """Charger un message depuis l'historique"""
+        # Cette méthode sera appelée via JavaScript pour charger un message spécifique
+        message_id = self.env.context.get('message_id')
+        if message_id:
+            message = self.env['chatbot_custom.message'].browse(message_id)
+            if message.exists():
+                self.user_input = message.user_input
+                self.bot_response = message.bot_response
+        return self._return_wizard()
+    
+    @api.model
+    def process_message_api(self, user_message):
+        """API pour traiter un message (utilisée par JavaScript)"""
+        config = self.env['chatbot.config'].search([('is_active', '=', True)], limit=1)
+        if not config:
+            return "❌ Configuration manquante"
+        
+        try:
+            anthropic_service = self.env['anthropic.service']
+            return anthropic_service.call_anthropic_api(user_message, config)
+        except Exception as e:
+            return f"❌ Erreur: {str(e)}"
+    
     def _get_or_create_config(self):
         """Récupérer ou créer la configuration"""
         if self.config_id:
@@ -126,7 +210,7 @@ class ChatbotWizard(models.TransientModel):
         
         return False
     
-    def _format_response(self, response):
+    def _format_response(self, response, response_time=None):
         """Formater la réponse pour l'affichage HTML"""
         if not response:
             return ""
@@ -135,16 +219,27 @@ class ChatbotWizard(models.TransientModel):
         formatted = response.replace('\n', '<br/>')
         
         # Convertir le markdown basique en HTML
-        formatted = formatted.replace('**', '<strong>').replace('**', '</strong>')
-        formatted = formatted.replace('*', '<em>').replace('*', '</em>')
+        import re
+        formatted = re.sub(r'\*\*(.*?)\*\*', r'<strong>\1</strong>', formatted)
+        formatted = re.sub(r'\*(.*?)\*', r'<em>\1</em>', formatted)
+        formatted = re.sub(r'`(.*?)`', r'<code>\1</code>', formatted)
         
-        return formatted
+        # Ajouter des statistiques de performance si disponibles
+        footer = ""
+        if response_time:
+            footer = f"""
+            <div style="margin-top: 15px; padding: 10px; background: #f8f9fa; border-radius: 6px; font-size: 12px; color: #6c757d;">
+                ⚡ Réponse générée en {response_time:.2f}s • 🤖 Assistant MCP Odoo
+            </div>
+            """
+        
+        return f"<div>{formatted}</div>{footer}"
     
     def _return_wizard(self):
         """Retourner le wizard en mode modal"""
         return {
             'type': 'ir.actions.act_window',
-            'name': 'Chatbot MCP',
+            'name': '🤖 Assistant Chatbot MCP',
             'res_model': 'chatbot.wizard',
             'view_mode': 'form',
             'res_id': self.id,
@@ -156,6 +251,7 @@ class ChatbotWizard(models.TransientModel):
         """Effacer la conversation"""
         self.user_input = ""
         self.bot_response = ""
+        self.current_session_id = self._generate_session_id()
         return self._return_wizard()
     
     def action_open_config(self):
